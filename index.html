@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComRent Dashboard</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the status indicator */
+        .status-indicator {
+            width: 1.5rem; /* 24px */
+            height: 1.5rem; /* 24px */
+            border-radius: 0.375rem; /* rounded-md */
+            cursor: pointer;
+            transition: all 0.1s ease-in-out;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+        }
+
+        .status-indicator:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+
+        /* Set default font to Inter, as per standard */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+        }
+
+        /* Custom cell padding for better table spacing */
+        .dashboard-table th, .dashboard-table td {
+            padding: 1rem 0.75rem;
+            text-align: left;
+            vertical-align: middle;
+            font-size: 0.875rem; /* sm */
+        }
+        
+        /* Styles for editable fields */
+        [contenteditable="true"] {
+            outline: none;
+            border-bottom: 2px dashed transparent;
+            cursor: text;
+        }
+        [contenteditable="true"]:hover {
+            border-bottom: 2px dashed #a5b4fc; /* Light indigo hover underline */
+        }
+        [contenteditable="true"]:focus {
+            background-color: #ffedd5; /* Light orange background on focus */
+            border-bottom: 2px solid #4f46e5; /* Solid indigo underline on focus */
+        }
+
+        /* Modal specific styles */
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Header and Start Session Button -->
+    <header class="mb-6 flex flex-col md:flex-row md:justify-between items-start md:items-center border-b pb-4">
+        <div class="flex items-center space-x-2 mb-4 md:mb-0">
+            <svg class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1v-3.25M7 17h10M5 17h2M17 17h2M3 11l8-4 8 4M12 11V3"/>
+            </svg>
+            <h1 class="text-2xl font-semibold text-gray-800">ComRent Dashboard</h1>
+        </div>
+        
+        <!-- Start Session Button -->
+        <button id="startButton" onclick="showModal()" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 transform hover:scale-105">
+            + Start New Session
+        </button>
+    </header>
+
+    <!-- Main Dashboard Table -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="overflow-x-auto">
+            <table id="pcDashboard" class="min-w-full divide-y divide-gray-200 dashboard-table">
+                <!-- Table Header -->
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">PC</th>
+                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Time Set (HH:MM)</th>
+                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Time Left (HH:MM)</th>
+                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Payment method</th>
+                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Check</th>
+                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Email invoice</th>
+                    </tr>
+                </thead>
+                <!-- Table Body will be populated by JavaScript -->
+                <tbody class="divide-y divide-gray-200" id="pcTableBody">
+                    <!-- Rows rendered here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Start Session Modal -->
+    <div id="sessionModal" class="modal fixed inset-0 z-50 flex items-center justify-center hidden">
+        <!-- Overlay -->
+        <div onclick="hideModal()" class="modal-overlay absolute inset-0 modal-overlay"></div>
+
+        <!-- Modal Content -->
+        <div class="bg-white w-full max-w-lg p-6 rounded-xl shadow-2xl z-50 mx-4">
+            <h2 class="text-xl font-bold mb-4 border-b pb-2">Start New PC Session</h2>
+            
+            <form id="sessionForm" onsubmit="event.preventDefault(); startSession();">
+                
+                <div class="mb-4">
+                    <label for="pcSelect" class="block text-sm font-medium text-gray-700">Select PC</label>
+                    <!-- A dropdown to select an available PC -->
+                    <select id="pcSelect" name="pcSelect" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="userName" class="block text-sm font-medium text-gray-700">User Name</label>
+                    <input type="text" id="userName" name="userName" required placeholder="e.g., Jane Doe" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="timeHours" class="block text-sm font-medium text-gray-700">Time (Hours)</label>
+                        <input type="number" id="timeHours" name="timeHours" min="0.5" max="24" step="0.5" value="1.0" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                    </div>
+                    <div>
+                        <label for="price" class="block text-sm font-medium text-gray-700">Price (₱)</label>
+                        <input type="number" id="price" name="price" min="1" step="0.50" value="15.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label for="paymentMethod" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                    <select id="paymentMethod" name="paymentMethod" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                        <option value="cash">Cash</option>
+                        <option value="gcash">GCash</option>
+                        <option value="maya">Maya</option>
+                        <option value="credit">Credit/Debit</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="hideModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition duration-150">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white font-medium rounded-lg shadow-md hover:bg-green-700 transition duration-150">Start Session</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        // Initial data matching the design provided
+        let pcData = [
+            { id: 1, pc: 'PC1', name: 'User1', timeSet: '01:00', timeLeft: '00:50', price: '15.00', method: 'gcash', check: 'approved', email: '-', status: 'active' },
+            { id: 2, pc: 'PC2', name: 'Dean', timeSet: '05:00', timeLeft: '02:50', price: '75.00', method: 'maya', check: 'pending', email: 'dean@gmail.com', status: 'warning' },
+            { id: 3, pc: 'PC3', name: 'User3', timeSet: '00:00', timeLeft: '00:00', price: '0.00', method: '-', check: '-', email: '-', status: 'offline' },
+            { id: 4, pc: 'PC4', name: 'User4', timeSet: '00:00', timeLeft: '00:00', price: '0.00', method: '-', check: '-', email: '-', status: 'offline' },
+            { id: 5, pc: 'PC5', name: 'User5', timeSet: '00:00', timeLeft: '00:00', price: '0.00', method: '-', check: '-', email: '-', status: 'offline' },
+            // Add a few more PCs to make the list more realistic
+            { id: 6, pc: 'PC6', name: 'Available', timeSet: '00:00', timeLeft: '00:00', price: '0.00', method: '-', check: '-', email: '-', status: 'offline' },
+            { id: 7, pc: 'PC7', name: 'Available', timeSet: '00:00', timeLeft: '00:00', price: '0.00', method: '-', check: '-', email: '-', status: 'offline' },
+            { id: 8, pc: 'PC8', name: 'Available', timeSet: '00:00', timeLeft: '00:00', price: '0.00', method: '-', check: '-', email: '-', status: 'offline' },
+        ];
+
+        // Status definitions for color mapping and cycling
+        const STATUS_MAP = {
+            'active': 'bg-green-500', // Green: Running
+            'warning': 'bg-orange-500', // Orange: Time expiring soon
+            'offline': 'bg-red-500', // Red: Available/Offline
+        };
+        const STATUS_CYCLE = ['active', 'warning', 'offline'];
+
+        /**
+         * Converts total hours (float) to HH:MM string format.
+         * @param {number} totalHours
+         * @returns {string} HH:MM string.
+         */
+        function hoursToHHMM(totalHours) {
+            const h = Math.floor(totalHours);
+            const m = Math.round((totalHours - h) * 60);
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        /**
+         * Renders the PC data table rows.
+         */
+        function renderTable() {
+            const tbody = document.getElementById('pcTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = ''; // Clear existing rows
+
+            pcData.forEach((pc, index) => {
+                const row = document.createElement('tr');
+                // Alternate row colors for better readability
+                row.className = index % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 hover:bg-gray-50';
+
+                // 1. Status Indicator Cell (Clickable)
+                const statusCell = document.createElement('td');
+                statusCell.className = 'whitespace-nowrap';
+                const indicator = document.createElement('span');
+                indicator.className = `status-indicator ${STATUS_MAP[pc.status]}`;
+                indicator.title = `Click to change status (Current: ${pc.status})`;
+                indicator.dataset.pcId = pc.id;
+                indicator.addEventListener('click', toggleStatus);
+                statusCell.appendChild(indicator);
+                row.appendChild(statusCell);
+
+                // 2. PC ID (Editable)
+                const pcCell = document.createElement('td');
+                pcCell.textContent = pc.pc;
+                pcCell.className = 'font-semibold text-gray-900 whitespace-nowrap';
+                pcCell.contentEditable = true; // Make it editable
+                pcCell.dataset.pcId = pc.id;
+                pcCell.dataset.field = 'pc';
+                pcCell.onblur = updatePCData; // Handler for when editing finishes
+                row.appendChild(pcCell);
+
+                // 3. Name (Editable)
+                const nameCell = document.createElement('td');
+                nameCell.textContent = pc.name;
+                nameCell.contentEditable = true; // Make it editable
+                nameCell.dataset.pcId = pc.id;
+                nameCell.dataset.field = 'name';
+                nameCell.onblur = updatePCData; // Handler for when editing finishes
+                row.appendChild(nameCell);
+
+                // 4. Time Set
+                const timeSetCell = document.createElement('td');
+                timeSetCell.textContent = pc.timeSet;
+                row.appendChild(timeSetCell);
+
+                // 5. Time Left
+                const timeLeftCell = document.createElement('td');
+                timeLeftCell.textContent = pc.timeLeft;
+                // Add conditional styling based on remaining time (simple check: if not 00:00)
+                timeLeftCell.className = pc.timeLeft !== '00:00' && (pc.timeLeft.localeCompare('01:00') <= 0) ? 'font-medium text-orange-600' : 'text-gray-500';
+                row.appendChild(timeLeftCell);
+
+                // 6. Price
+                const priceCell = document.createElement('td');
+                // Format price to always show two decimal places
+                priceCell.textContent = parseFloat(pc.price).toFixed(2); 
+                priceCell.className = 'font-mono text-right text-gray-900';
+                row.appendChild(priceCell);
+
+                // 7. Payment method
+                const methodCell = document.createElement('td');
+                methodCell.textContent = pc.method.toUpperCase(); // Display methods in uppercase
+                row.appendChild(methodCell);
+
+                // 8. Payment Check
+                const checkCell = document.createElement('td');
+                checkCell.textContent = pc.check;
+                checkCell.className = pc.check === 'pending' ? 'text-orange-600 font-medium' : (pc.check === 'approved' ? 'text-green-600' : 'text-gray-400');
+                row.appendChild(checkCell);
+
+                // 9. Email invoice (as a link if available)
+                const emailCell = document.createElement('td');
+                if (pc.email !== '-' && pc.email.includes('@')) {
+                    const link = document.createElement('a');
+                    link.href = `mailto:${pc.email}`;
+                    link.textContent = pc.email;
+                    link.className = 'text-blue-600 hover:text-blue-800 underline';
+                    emailCell.appendChild(link);
+                } else {
+                    emailCell.textContent = '-';
+                    emailCell.className = 'text-gray-400';
+                }
+                row.appendChild(emailCell);
+
+                tbody.appendChild(row);
+            });
+        }
+
+        /**
+         * Toggles the status of the clicked PC item.
+         * @param {Event} event The click event.
+         */
+        function toggleStatus(event) {
+            const pcId = parseInt(event.target.dataset.pcId);
+            const pcIndex = pcData.findIndex(pc => pc.id === pcId);
+
+            if (pcIndex !== -1) {
+                const currentStatus = pcData[pcIndex].status;
+                const currentIndex = STATUS_CYCLE.indexOf(currentStatus);
+                const nextIndex = (currentIndex + 1) % STATUS_CYCLE.length;
+                const nextStatus = STATUS_CYCLE[nextIndex];
+
+                // Update the data
+                pcData[pcIndex].status = nextStatus;
+
+                // If setting to 'offline', clear all session data
+                if (nextStatus === 'offline') {
+                    pcData[pcIndex] = { 
+                        id: pcData[pcIndex].id, 
+                        pc: pcData[pcIndex].pc, 
+                        name: 'Available', 
+                        timeSet: '00:00', 
+                        timeLeft: '00:00', 
+                        price: '0.00', 
+                        method: '-', 
+                        check: '-', 
+                        email: '-', 
+                        status: 'offline' 
+                    };
+                }
+
+                // Re-render the entire table to reflect the change
+                renderTable();
+
+                console.log(`PC ${pcData[pcIndex].pc} status changed to: ${nextStatus}`);
+            }
+        }
+        
+        /**
+         * Updates the pcData array when an editable cell loses focus.
+         * @param {Event} event The blur event from the contenteditable cell.
+         */
+        function updatePCData(event) {
+            const cell = event.target;
+            const pcId = parseInt(cell.dataset.pcId);
+            const field = cell.dataset.field;
+            const newValue = cell.textContent.trim();
+            
+            const pcIndex = pcData.findIndex(pc => pc.id === pcId);
+
+            if (pcIndex !== -1 && field) {
+                // Ensure the value is not empty (especially for PC name)
+                if (field === 'pc' && newValue === '') {
+                    cell.textContent = pcData[pcIndex].pc; // Revert if empty
+                    console.error("PC name cannot be empty.");
+                    return;
+                }
+                
+                // Only update if the value has actually changed
+                if (pcData[pcIndex][field] !== newValue) {
+                    pcData[pcIndex][field] = newValue;
+                    console.log(`Updated PC ${pcId}, field ${field} to: ${newValue}`);
+                }
+            }
+            // Ensure the displayed content is the trimmed value for cleanliness
+            cell.textContent = newValue;
+        }
+
+
+        /**
+         * Populates the PC selection dropdown in the modal with available PCs.
+         */
+        function populatePCSelect() {
+            const selectElement = document.getElementById('pcSelect');
+            selectElement.innerHTML = ''; // Clear existing options
+
+            // Get only PCs that are 'offline' (available)
+            const availablePCs = pcData.filter(pc => pc.status === 'offline');
+            
+            if (availablePCs.length === 0) {
+                const option = document.createElement('option');
+                option.textContent = 'No PCs currently available';
+                option.disabled = true;
+                selectElement.appendChild(option);
+                document.getElementById('sessionForm').querySelector('button[type="submit"]').disabled = true;
+                return;
+            }
+
+            document.getElementById('sessionForm').querySelector('button[type="submit"]').disabled = false;
+            availablePCs.forEach(pc => {
+                const option = document.createElement('option');
+                option.value = pc.id;
+                option.textContent = pc.pc;
+                selectElement.appendChild(option);
+            });
+        }
+
+        /**
+         * Shows the Start Session modal.
+         */
+        function showModal() {
+            populatePCSelect();
+            document.getElementById('sessionModal').classList.remove('hidden');
+        }
+
+        /**
+         * Hides the Start Session modal and resets the form.
+         */
+        function hideModal() {
+            document.getElementById('sessionModal').classList.add('hidden');
+            document.getElementById('sessionForm').reset();
+        }
+
+        /**
+         * Handles the form submission to start a new PC session.
+         */
+        function startSession() {
+            const form = document.getElementById('sessionForm');
+            const pcId = parseInt(form.pcSelect.value);
+            const name = form.userName.value.trim();
+            const timeHours = parseFloat(form.timeHours.value);
+            const price = parseFloat(form.price.value).toFixed(2);
+            const method = form.paymentMethod.value;
+
+            // Find the PC in the data array
+            const pcIndex = pcData.findIndex(pc => pc.id === pcId);
+            
+            if (pcIndex !== -1) {
+                // Convert timeHours to HH:MM format
+                const timeHHMM = hoursToHHMM(timeHours);
+                
+                // Update the PC data with the new session details
+                pcData[pcIndex] = {
+                    ...pcData[pcIndex], // Keep ID and PC name
+                    name: name,
+                    timeSet: timeHHMM,
+                    timeLeft: timeHHMM,
+                    price: price,
+                    method: method,
+                    check: 'approved', // Assuming payment is confirmed immediately for simplicity
+                    email: '-',
+                    status: 'active'
+                };
+
+                // Re-render table and hide modal
+                renderTable();
+                hideModal();
+
+                console.log(`Session started on PC ${pcData[pcIndex].pc} for ${timeHHMM} hours.`);
+            } else {
+                console.error('Error: Could not find PC to start session.');
+            }
+        }
+
+        // Initialize the table when the window loads
+        window.onload = renderTable;
+    </script>
+</body>
+</html>
