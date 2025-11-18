@@ -4,6 +4,10 @@
 
 ComRent is a self-contained, front-end administrative dashboard designed for real-time supervision of computer rental sessions in an internet café environment. It provides operators with a clear, dynamic view of PC status, remaining session time, and essential transaction details.
 
+![](images/Screenshot(1).png)
+![](images/Screenshot(2).png)
+![](images/Screenshot(3).png)
+
 ---
 
 ## ✨ **Features**
